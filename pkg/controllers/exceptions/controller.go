@@ -53,7 +53,10 @@ func NewController(
 	polexInformer kyvernov2informers.PolicyExceptionInformer,
 	namespace string,
 ) *controller {
-	queue := workqueue.NewNamedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[any](), ControllerName)
+	queue := workqueue.NewTypedRateLimitingQueueWithConfig(
+		workqueue.DefaultTypedControllerRateLimiter[any](),
+		workqueue.TypedRateLimitingQueueConfig[any]{Name: ControllerName},
+	)
 	if _, _, err := controllerutils.AddDefaultEventHandlers(logger, cpolInformer.Informer(), queue); err != nil {
 		logger.Error(err, "failed to register event handlers")
 	}
@@ -155,10 +158,10 @@ func (c *controller) buildRuleIndex(key string, policy kyvernov1.PolicyInterface
 		return 0
 	})
 	index := ruleIndex{}
-	for _, rule := range autogen.ComputeRules(policy, "") {
+	for _, name := range autogen.Default.GetAutogenRuleNames(policy) {
 		for _, polex := range polexList {
-			if polex.Contains(key, rule.Name) {
-				index[rule.Name] = append(index[rule.Name], polex)
+			if polex.Contains(key, name) {
+				index[name] = append(index[name], polex)
 			}
 		}
 	}
